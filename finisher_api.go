@@ -71,20 +71,27 @@ func (db *DB) CreateInBatches(value interface{}, batchSize int) (tx *DB) {
 
 // Save updates value in database. If value doesn't contain a matching primary key, value is inserted.
 func (db *DB) Save(value interface{}) (tx *DB) {
+	// 获取数据库实例并准备执行SQL语句
 	tx = db.getInstance()
 	tx.Statement.Dest = value
 
+	// 利用反射机制确定value的类型
 	reflectValue := reflect.Indirect(reflect.ValueOf(value))
 	for reflectValue.Kind() == reflect.Ptr || reflectValue.Kind() == reflect.Interface {
 		reflectValue = reflect.Indirect(reflectValue)
 	}
 
 	switch reflectValue.Kind() {
+	// 如果value是Slice或Array
 	case reflect.Slice, reflect.Array:
+		// 如果没有定义冲突解决策略（”ON CONFLICT”），那么设置更新所有冲突字段的冲突解决策略
 		if _, ok := tx.Statement.Clauses["ON CONFLICT"]; !ok {
 			tx = tx.Clauses(clause.OnConflict{UpdateAll: true})
 		}
+		// 执行 Create() 回调，实际上是执行批量插入（带冲突更新逻辑）
+		// .Set("gorm:update_track_time", true) 是设置更新时间字段（如 updated_at）
 		tx = tx.callbacks.Create().Execute(tx.Set("gorm:update_track_time", true))
+	// 如果value是一个Struct，那么会尝试解析这个结构体，然后遍历它的主键字段。如果主键字段是零值，则执行插入操作。
 	case reflect.Struct:
 		if err := tx.Statement.Parse(value); err == nil && tx.Statement.Schema != nil {
 			for _, pf := range tx.Statement.Schema.PrimaryFields {
@@ -94,16 +101,20 @@ func (db *DB) Save(value interface{}) (tx *DB) {
 			}
 		}
 
+		// 如果主键非零，则继续进入 default 分支，走更新逻辑。
 		fallthrough
+	// 默认情况（结构体主键不为零或类型是其他的）
 	default:
 		selectedUpdate := len(tx.Statement.Selects) != 0
 		// when updating, use all fields including those zero-value fields
+		// 判断是否设置了特定字段更新（Select）。如果没有，就默认更新全部字段（包括零值字段）。
 		if !selectedUpdate {
 			tx.Statement.Selects = append(tx.Statement.Selects, "*")
 		}
 
 		updateTx := tx.callbacks.Update().Execute(tx.Session(&Session{Initialized: true}))
 
+		// 如果没有错误、也没有实际更新行、不是 DryRun 并且没有指定 Select 字段，就执行插入（带 OnConflict 策略的插入）。
 		if updateTx.Error == nil && updateTx.RowsAffected == 0 && !updateTx.DryRun && !selectedUpdate {
 			return tx.Session(&Session{SkipHooks: true}).Clauses(clause.OnConflict{UpdateAll: true}).Create(value)
 		}

@@ -91,6 +91,18 @@ type Option interface {
 }
 
 // DB GORM DB definition
+// 截止版本，db.clone 只有三个取值，分别为 0、1 和 2
+// •取值0：
+//
+//	是默认值，表示当前实例不是克隆的，也没有开启事务。在这种情况下，所有的数据库操作都会直接应用到原始的数据库连接上。
+//
+// •取值1：
+//
+//	创建一个新的 Statement 实例，并将当前数据库连接的一些属性（如连接池、上下文、语句片段、变量和跳过的钩子）复制到新的 Statement 实例中。
+//
+// •取值2：
+//
+//	克隆当前数据库连接的 Statement 实例，并将新的 DB 实例设置为 Statement 的 DB 属性。
 type DB struct {
 	*Config
 	Error        error
@@ -396,6 +408,7 @@ func (db *DB) DB() (*sql.DB, error) {
 }
 
 func (db *DB) getInstance() *DB {
+	// 当 db.clone > 0 时，返回一个新的 *DB 实例（tx）
 	if db.clone > 0 {
 		tx := &DB{Config: db.Config, Error: db.Error}
 
@@ -405,20 +418,21 @@ func (db *DB) getInstance() *DB {
 				DB:        tx,
 				ConnPool:  db.Statement.ConnPool,
 				Context:   db.Statement.Context,
-				Clauses:   map[string]clause.Clause{},
-				Vars:      make([]interface{}, 0, 8),
+				Clauses:   map[string]clause.Clause{}, // 已设置的 where、join 等清空了
+				Vars:      make([]interface{}, 0, 8),  // 清空了
 				SkipHooks: db.Statement.SkipHooks,
 			}
-		} else {
+		} else { // 必然是 db.clone == 2
 			// with clone statement
-			tx.Statement = db.Statement.clone()
+			tx.Statement = db.Statement.clone() // 复制 Clauses、Vars、Joins 等，已设置的 where、join 等继续保留
 			tx.Statement.DB = tx
 		}
 
-		return tx
+		return tx // 没有设置 tx.clone，因此 tx.clone 值为 0
 	}
 
-	return db
+	// 当 db.clone <= 0 时，直接返回原始的 db 实例
+	return db // 没对 db 做任何修改，因此 db.clone 值保持不变
 }
 
 // Expr returns clause.Expr, which can be used to pass SQL expression as params
