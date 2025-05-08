@@ -104,11 +104,11 @@ type Option interface {
 //
 //	克隆当前数据库连接的 Statement 实例，并将新的 DB 实例设置为 Statement 的 DB 属性。
 type DB struct {
-	*Config
-	Error        error
-	RowsAffected int64
-	Statement    *Statement
-	clone        int
+	*Config                 // 用户自定义的配置项
+	Error        error      // 一次会话执行过程中遇到的错误
+	RowsAffected int64      // 该请求影响的行数
+	Statement    *Statement // 一次会话的状态信息，比如请求和响应信息
+	clone        int        // 会话被克隆的次数. 倘若 clone = 1，代表是始祖 DB 实例；倘若 clone > 1，代表是从始祖 DB 克隆出来的会话
 }
 
 // Session session config when create session with Session() method
@@ -158,6 +158,7 @@ func Open(dialector Dialector, opts ...Option) (db *DB, err error) {
 		}
 	}
 
+	// 表、列命名策略
 	if config.NamingStrategy == nil {
 		config.NamingStrategy = schema.NamingStrategy{IdentifierMaxLength: 64} // Default Identifier length is 64
 	}
@@ -184,6 +185,7 @@ func Open(dialector Dialector, opts ...Option) (db *DB, err error) {
 
 	db = &DB{Config: config, clone: 1}
 
+	// 初始化 callback 当中的各个 processor
 	db.callbacks = initializeCallbacks(db)
 
 	if config.ClauseBuilders == nil {
@@ -191,6 +193,8 @@ func Open(dialector Dialector, opts ...Option) (db *DB, err error) {
 	}
 
 	if config.Dialector != nil {
+		// 在其中会对 crud 各个方法的 callback 方法进行注册
+		// 会对 db.connPool 进行初始化，通常情况下是 database/sql 库下 *sql.DB 的类型
 		err = config.Dialector.Initialize(db)
 
 		if err != nil {
@@ -200,12 +204,15 @@ func Open(dialector Dialector, opts ...Option) (db *DB, err error) {
 		}
 	}
 
+	// 是否启用 prepare 模式
 	if config.PrepareStmt {
 		preparedStmt := NewPreparedStmtDB(db.ConnPool)
 		db.cacheStore.Store(preparedStmtDBKey, preparedStmt)
+		// 倘若启用了 prepare 模式，会对 conn 进行替换
 		db.ConnPool = preparedStmt
 	}
 
+	// 构造一个 statement 用于存储处理链路中的一些状态信息
 	db.Statement = &Statement{
 		DB:       db,
 		ConnPool: db.ConnPool,

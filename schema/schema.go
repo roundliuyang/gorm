@@ -163,6 +163,7 @@ func ParseWithSpecialTableName(dest interface{}, cacheStore *sync.Map, namer Nam
 
 	modelValue := reflect.New(modelType)
 	tableName := namer.TableName(modelType.Name())
+	// 将 po 模型断言成 tabler interface，然后调用 TableName 方法获取表名
 	if tabler, ok := modelValue.Interface().(Tabler); ok {
 		tableName = tabler.TableName()
 	}
@@ -177,8 +178,9 @@ func ParseWithSpecialTableName(dest interface{}, cacheStore *sync.Map, namer Nam
 	}
 
 	schema := &Schema{
-		Name:             modelType.Name(),
-		ModelType:        modelType,
+		Name:      modelType.Name(),
+		ModelType: modelType,
+		// 将表名信息添加到 schema 当中
 		Table:            tableName,
 		FieldsByName:     map[string]*Field{},
 		FieldsByBindName: map[string]*Field{},

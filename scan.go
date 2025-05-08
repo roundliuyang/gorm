@@ -122,6 +122,9 @@ const (
 )
 
 // Scan scan rows into db statement
+// Scan 方法将 rows 中的数据扫描解析到 db statement 中的 dest 当中
+// 其中 rows 通常为 database/sql 下的 *Rows 类型
+// 扫描数据的核心在于调用了 rows.Scan 方法
 func Scan(rows Rows, db *DB, mode ScanMode) {
 	var (
 		columns, _          = rows.Columns()
@@ -131,8 +134,10 @@ func Scan(rows Rows, db *DB, mode ScanMode) {
 		onConflictDonothing = mode&ScanOnConflictDoNothing != 0
 	)
 
+	// 影响的行数
 	db.RowsAffected = 0
 
+	// 根据 dest 类型进行断言分配
 	switch dest := db.Statement.Dest.(type) {
 	case map[string]interface{}, *map[string]interface{}:
 		if initialized || rows.Next() {

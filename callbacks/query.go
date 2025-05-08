@@ -14,6 +14,7 @@ import (
 
 func Query(db *gorm.DB) {
 	if db.Error == nil {
+		// 拼接生成 sql
 		BuildQuerySQL(db)
 
 		if !db.DryRun && db.Error == nil {

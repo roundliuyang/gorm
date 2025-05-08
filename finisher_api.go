@@ -19,8 +19,11 @@ func (db *DB) Create(value interface{}) (tx *DB) {
 		return db.CreateInBatches(value, db.CreateBatchSize)
 	}
 
+	// 克隆 db 会话实例
 	tx = db.getInstance()
+	// 设置 dest
 	tx.Statement.Dest = value
+	// 执行 create processor
 	return tx.callbacks.Create().Execute(tx)
 }
 
@@ -679,8 +682,10 @@ func (db *DB) Begin(opts ...*sql.TxOptions) *DB {
 	}
 
 	switch beginner := tx.Statement.ConnPool.(type) {
+	// 标准模式，会走到 sql.DB.BeginTX 方法
 	case TxBeginner:
 		tx.Statement.ConnPool, err = beginner.BeginTx(tx.Statement.Context, opt)
+	// prepare 模式，会走到 PreparedStmtDB.BeginTx 方法中
 	case ConnPoolBeginner:
 		tx.Statement.ConnPool, err = beginner.BeginTx(tx.Statement.Context, opt)
 	default:

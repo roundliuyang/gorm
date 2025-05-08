@@ -124,6 +124,7 @@ func Delete(config *Config) func(db *gorm.DB) {
 			}
 		}
 
+		// 生成 sql
 		if db.Statement.SQL.Len() == 0 {
 			db.Statement.SQL.Grow(100)
 			db.Statement.AddClauseIfNotExists(clause.Delete{})
@@ -156,7 +157,9 @@ func Delete(config *Config) func(db *gorm.DB) {
 		if !db.DryRun && db.Error == nil {
 			ok, mode := hasReturning(db, supportReturning)
 			if !ok {
+				// 执行删除操作（默认使用的是标准库 database/sql 中的 db.ExecContxt(...) 方法）
 				result, err := db.Statement.ConnPool.ExecContext(db.Statement.Context, db.Statement.SQL.String(), db.Statement.Vars...)
+				// 调用 result.RowsAffected() 方法，获取本次删除操作影响的数据行数
 				if db.AddError(err) == nil {
 					db.RowsAffected, _ = result.RowsAffected()
 				}

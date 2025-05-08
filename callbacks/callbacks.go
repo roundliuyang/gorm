@@ -37,6 +37,7 @@ func RegisterDefaultCallbacks(db *gorm.DB, config *Config) {
 		config.UpdateClauses = updateClauses
 	}
 
+	//  创建类 create processor
 	createCallback := db.Callback().Create()
 	createCallback.Match(enableTransaction).Register("gorm:begin_transaction", BeginTransaction)
 	createCallback.Register("gorm:before_create", BeforeCreate)
@@ -47,12 +48,14 @@ func RegisterDefaultCallbacks(db *gorm.DB, config *Config) {
 	createCallback.Match(enableTransaction).Register("gorm:commit_or_rollback_transaction", CommitOrRollbackTransaction)
 	createCallback.Clauses = config.CreateClauses
 
+	// 查询类 query processor
 	queryCallback := db.Callback().Query()
 	queryCallback.Register("gorm:query", Query)
 	queryCallback.Register("gorm:preload", Preload)
 	queryCallback.Register("gorm:after_query", AfterQuery)
 	queryCallback.Clauses = config.QueryClauses
 
+	// 删除类 delete processor
 	deleteCallback := db.Callback().Delete()
 	deleteCallback.Match(enableTransaction).Register("gorm:begin_transaction", BeginTransaction)
 	deleteCallback.Register("gorm:before_delete", BeforeDelete)
@@ -62,6 +65,7 @@ func RegisterDefaultCallbacks(db *gorm.DB, config *Config) {
 	deleteCallback.Match(enableTransaction).Register("gorm:commit_or_rollback_transaction", CommitOrRollbackTransaction)
 	deleteCallback.Clauses = config.DeleteClauses
 
+	// 更新类 update processor
 	updateCallback := db.Callback().Update()
 	updateCallback.Match(enableTransaction).Register("gorm:begin_transaction", BeginTransaction)
 	updateCallback.Register("gorm:setup_reflect_value", SetupUpdateReflectValue)

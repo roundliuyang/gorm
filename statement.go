@@ -20,28 +20,29 @@ import (
 
 // Statement statement
 type Statement struct {
+	// 数据库实例
 	*DB
 	TableExpr            *clause.Expr
-	Table                string
-	Model                interface{}
+	Table                string      // 表名
+	Model                interface{} // 操作的 po 模型
 	Unscoped             bool
-	Dest                 interface{}
+	Dest                 interface{} // 处理结果反序列化到此处
 	ReflectValue         reflect.Value
-	Clauses              map[string]clause.Clause
+	Clauses              map[string]clause.Clause // 各种条件语句
 	BuildClauses         []string
-	Distinct             bool
-	Selects              []string // selected columns
-	Omits                []string // omit columns
-	Joins                []join
+	Distinct             bool     // 是否启用 distinct 模式
+	Selects              []string // selected columns  select 语句
+	Omits                []string // omit columns      omit 语句
+	Joins                []join   // join
 	Preloads             map[string][]interface{}
 	Settings             sync.Map
-	ConnPool             ConnPool
-	Schema               *schema.Schema
-	Context              context.Context
-	RaiseErrorOnNotFound bool
+	ConnPool             ConnPool        // 连接池，通常情况下是 database/sql 库下的 *DB  类型.  在 prepare 模式为 gorm.PreparedStmtDB
+	Schema               *schema.Schema  // 操作表的概要信息
+	Context              context.Context // 上下文，请求生命周期控制管理
+	RaiseErrorOnNotFound bool            // 在未查找到数据记录时，是否抛出 recordNotFound 错误
 	SkipHooks            bool
-	SQL                  strings.Builder
-	Vars                 []interface{}
+	SQL                  strings.Builder // 执行的 sql，调用 state.Build 方法后，会将 sql 各部分文本依次追加到其中
+	Vars                 []interface{}   // 存储的变量
 	CurDestIndex         int
 	attrs                []interface{}
 	assigns              []interface{}

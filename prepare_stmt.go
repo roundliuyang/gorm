@@ -8,16 +8,22 @@ import (
 )
 
 type Stmt struct {
+	// database/sql 标准库下的 statement
 	*sql.Stmt
+	// 是否处于事务
 	Transaction bool
-	prepared    chan struct{}
-	prepareErr  error
+	// 标识当前 stmt 是否已初始化完成
+	prepared   chan struct{}
+	prepareErr error
 }
 
+// prepare 模式下的 connPool 实现类.
 type PreparedStmtDB struct {
+	// 各 stmt 实例. 其中 key 为 sql 模板，stmt 是对封 database/sql 中 *Stmt 的封装
 	Stmts       map[string]*Stmt
 	PreparedSQL []string
 	Mux         *sync.RWMutex
+	// 内置的 ConnPool 字段通常为 database/sql 中的 *DB
 	ConnPool
 }
 

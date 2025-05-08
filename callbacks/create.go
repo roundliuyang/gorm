@@ -60,6 +60,7 @@ func Create(config *Config) func(db *gorm.DB) {
 			}
 		}
 
+		// 生成 sql
 		if db.Statement.SQL.Len() == 0 {
 			db.Statement.SQL.Grow(180)
 			db.Statement.AddClauseIfNotExists(clause.Insert{})
@@ -94,6 +95,7 @@ func Create(config *Config) func(db *gorm.DB) {
 			return
 		}
 
+		// ... 执行 sql
 		result, err := db.Statement.ConnPool.ExecContext(
 			db.Statement.Context, db.Statement.SQL.String(), db.Statement.Vars...,
 		)
@@ -102,6 +104,7 @@ func Create(config *Config) func(db *gorm.DB) {
 			return
 		}
 
+		// ... 获取影响的行数
 		db.RowsAffected, _ = result.RowsAffected()
 		if db.RowsAffected != 0 && db.Statement.Schema != nil &&
 			db.Statement.Schema.PrioritizedPrimaryField != nil &&
